@@ -1,137 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script defer src="index.js"></script>
-    <title>HCXAI Study</title>
-    <style>
-        :root{
-            --gray: #1d2327; 
-        }
-        /* Reset default margins */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        /* Full-screen centered layout */
-        body {
-            font-family: Arial, sans-serif;
-            background-color: white;
-            height: 100vh; /* Full viewport height */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-        }
-
-        /* Title styling */
-        h1 {
-            font-size: 24px;
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color:var(--gray); 
-        }
-
-        /* Container for form */
-        .container {
-            color:var(--gray); 
-            width: 450px;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #dcdfe3;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            background: #f9fbfc;
-            margin-top: -100px;
-        }
-
-        /* Input field */
-        input {
-            width:75%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-
-        input[readonly] {
-            background: linear-gradient(to bottom, #ecefec, #e3e6e3);
-            color: #555;
-            border: 1px solid #bfc3bf;
-            border-radius: 4px;
-            box-shadow: inset 0 2px 3px rgba(0,0,0,0.08);
-            cursor: not-allowed;
-            caret-color: transparent;  /* hides the blinking cursor */
-            user-select: none;         /* optional: prevent text selection */
-        }
-
-
-        input[readonly]:focus {
-            outline: none;               /* no blue outline */
-            box-shadow: none;
-        }
-
-
-
-        /* Start button */
-        button {
-            width: 30%;
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        .form-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 3px;
-            justify-content: space-between;
-        }
-
-        .form-row label {
-            flex: 1;
-            text-align: left;
-            margin-right: 10px;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .form-row input {
-            flex: 2;
-            text-align: left;
-            margin-left: 10px;
-        }
-
-        /* Button hover effect */
-        button:hover {
-            background-color: #45a049;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blockies Study – Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/common/index.css">
 </head>
 <body>
-
-    <h1>HCXAI Group - Study on AI-Assisted Decision-Making</h1>
-
-    <div class="container">
-        <div class="form-row">
-            <label for="participant_id">Participant ID:</label>
-            <input type="text" id="participant_id" placeholder="Enter Participant ID" readonly>
+  <div class="fixed-page-dimension">
+    <!-- Same Unified Header -->
+    <header>
+      <div class="header-left">
+        <h1 class="app-title" style="text-align: left;">Blockies OCDegen Diagnosis Support</h1>
+      </div>
+    </header>
+    
+    <!-- Centered Glass Card -->
+    <main style="align-items: center; justify-content: center;">
+      <div class="glass-card">
+        <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">🧩</div>
+        <h1 style="font-size: 2.5rem; color: var(--text-dark); margin-bottom: 0.5rem;">Blockies Study</h1>
+        <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem;">AI-assisted diagnosis evaluation platform</p>
+        
+        <div style="display: flex; gap: 1.5rem; justify-content: center;">
+          <a href="/start.html" class="global-btn" style="background: var(--bg-blue); color: white; border: none;">▶ Start Study</a>
+          <a href="/create.html" class="global-btn" style="background: var(--bg-green); color: white; border: none;">➕ Create Study</a>
         </div>
-        <div class="form-row">
-            <label for="study_id">Study ID:</label>
-            <input type="text" id="study_id" placeholder="Enter Study ID" readonly>
-        </div>
-        <button id="start_button">Start</button>
-    </div>
+      </div>
+    </main>
 
+    <footer>
+      <div style="color: var(--text-muted); font-size: 0.95rem;">Enter a study or create a new one to begin.</div>
+    </footer>
+  </div>
 </body>
 </html>
-

@@ -4,67 +4,111 @@
  * Author: V Natarjan
  */
 
-const fs = require('fs');
+const fs = require('fs-extra');
 const express = require('express');
 const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-// From server/server.js the project root is one level above
+
 const project_root = "../";
 const app = express();
-const db_path = path.join(__dirname, project_root, 'database/database.db');
+const db_path = process.env.DB_PATH || path.join(__dirname, project_root, 'database/database.db');
 const PORT = process.env.PORT || 7000;
-const client_ui_web_pages_location='client';
+const client_ui_web_pages_location = 'client';
 let db;
 
-// Initialize the server and database
+// ============================================================
+// 1. Server & Database Initialization
+// ============================================================
+
 function init() {
+    // --- Security: allow eval/inline for development ---
+    app.use((req, res, next) => {
+        res.setHeader(
+            'Content-Security-Policy',
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline';"
+        );
+        next();
+    });
+
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
     app.use(bodyParser.urlencoded({ extended: true }));
+
+    // --- Serve the common index.html for ALL study pages ---
+    app.get(/\/study_id_[^\/]+\/index\.html$/, (req, res) => {
+        const commonPath = path.join(__dirname, project_root, client_ui_web_pages_location, 'common', 'index.html');
+        res.sendFile(commonPath);
+    });
+
+    // --- Static files (images, input.json, common client assets) ---
     app.use(express.static(path.join(__dirname, project_root, client_ui_web_pages_location)));
+
     db_init();
 }
 
 function start_http_server(port) {
     app.listen(port, () => {
-        console.log(`Server running at http://localhost:${port}?participant_id=123&study_id=456`);
+        console.log(`Server running at http://localhost:${port}`);
+        console.log(
+            `Example: http://localhost:${port}/study_id_411/index.html?participant_id=123&study_id=411&page_nr=1&total_pages=16`
+        );
     });
 }
 
-function db_create_or_open()
-{
-    // Create or open the database
+// ============================================================
+// 2. Database Setup
+// ============================================================
+
+function db_create_or_open() {
     db = new sqlite3.Database(db_path, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-    if (err) {
-        console.error('Error opening database:', err.message);
-    } else {
-        console.log('Database opened (or created if not existing) successfully.');
-    }
-
+        if (err) {
+            console.error('Error opening database:', err.message);
+        } else {
+            console.log('Database opened (or created) successfully.');
+        }
     });
-
-    //Other files can access it
     module.exports = db;
 }
 
-function db_table_init()
-{
-    // Create table if it doesn't exist
+function db_table_init() {
     db.serialize(() => {
+        // Create study table with TEXT study_id to support alphanumeric IDs
+        db.run(`CREATE TABLE IF NOT EXISTS study (
+            study_id TEXT PRIMARY KEY,
+            study_type INTEGER CHECK(study_type IN (1, 2, 3, 4, 5)),
+            total_pages INTEGER
+        )`);
+
+        // participant_feedback: study_id as TEXT
         db.run(`CREATE TABLE IF NOT EXISTS participant_feedback (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    participant_id TEXT NOT NULL,
-                    study_id INTEGER NOT NULL,
-                    xray_image TEXT NOT NULL,
-                    participant_diagnosis TEXT NOT NULL,
-                    page_nr INTEGER NOT NULL, 
-                    created_at INTEGER DEFAULT (strftime('%s', 'now')), 
-                    updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-                )`
-            );
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            participant_id TEXT NOT NULL,
+            study_id TEXT NOT NULL,
+            xray_image TEXT,
+            participant_diagnosis TEXT NOT NULL,
+            page_nr INTEGER NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now')),
+            updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )`);
+
+        // access_times: study_id as TEXT
+        db.run(`CREATE TABLE IF NOT EXISTS access_times (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            participant_id TEXT NOT NULL,
+            study_id TEXT NOT NULL,
+            page_nr INTEGER NOT NULL,
+            last_access_ms INTEGER NOT NULL,
+            last_update_ms INTEGER NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now')),
+            updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )`);
+
+        // Unique index to prevent duplicate feedback entries
+        db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_feedback ON participant_feedback(study_id, participant_id, page_nr);`);
     });
-    // add trigger
+
+    // Triggers
     db.serialize(() => {
         db.run(`DROP TRIGGER IF EXISTS set_timestamp1;`);
         db.run(`CREATE TRIGGER set_timestamp1
@@ -74,25 +118,8 @@ function db_table_init()
                     UPDATE participant_feedback
                     SET updated_at = (strftime('%s', 'now'))
                     WHERE id = OLD.id;
-                END;`
-            );
-    });
+                END;`);
 
-    // Create table if it doesn't exist
-    db.serialize(() => {
-        db.run(`CREATE TABLE IF NOT EXISTS access_times (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    participant_id TEXT NOT NULL,
-                    study_id INTEGER NOT NULL,
-                    page_nr INTEGER NOT NULL,
-                    last_access_ms INTEGER NOT NULL,
-                    last_update_ms INTEGER NOT NULL, 
-                    created_at INTEGER DEFAULT (strftime('%s', 'now')),
-                    updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-                )`);
-    });
-    // add trigger
-    db.serialize(() => {
         db.run(`DROP TRIGGER IF EXISTS set_timestamp2;`);
         db.run(`CREATE TRIGGER set_timestamp2
                 AFTER UPDATE ON access_times
@@ -101,60 +128,227 @@ function db_table_init()
                     UPDATE access_times
                     SET updated_at = (strftime('%s', 'now'))
                     WHERE id = OLD.id;
-                END;`
-        );
+                END;`);
     });
 }
 
-function db_init()
-{
+function db_init() {
     db_create_or_open();
     db_table_init();
 }
 
-// Register a POST route
-function register_post_event(route, callback) {
-    app.post(route, (req, res) => {
-        callback(req, res);
-    });
+// ============================================================
+// 3. Validation Middleware
+// ============================================================
+function validateFeedback(req, res, next) {
+  const { participant_id, study_id, xray_image, participant_diagnosis, page_nr } = req.body;
+  // Only require participant_id, study_id, participant_diagnosis, page_nr.
+  // xray_image may be empty.
+  if (!participant_id || !study_id || !participant_diagnosis || page_nr === undefined) {
+    return res.status(400).json({ error: 'Missing required fields (participant_id, study_id, participant_diagnosis, page_nr)' });
+  }
+  if (!['healthy', 'unhealthy'].includes(participant_diagnosis)) {
+    return res.status(400).json({ error: 'Invalid diagnosis (must be "healthy" or "unhealthy")' });
+  }
+  next();
 }
 
-// Register a GET route
-function register_get_event(route, callback) {
-    app.get(route, (req, res) => {
-        callback(req, res);
+// ----- Create Study Route -----
+const multer = require('multer');
+const csv = require('csv-parser');
+const AdmZip = require('adm-zip');
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+app.post('/create-study', upload.fields([
+  { name: 'csv', maxCount: 1 },
+  { name: 'zip', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { study_id, study_type } = req.body;
+    if (!study_id || !study_type) {
+      return res.status(400).json({ error: 'Missing study_id or study_type' });
+    }
+    if (!req.files || !req.files.csv || !req.files.zip) {
+      return res.status(400).json({ error: 'CSV and ZIP files are required' });
+    }
+
+    const csvBuffer = req.files.csv[0].buffer;
+    const zipBuffer = req.files.zip[0].buffer;
+
+    // 1. Parse CSV
+    const csvData = await parseCSV(csvBuffer);
+    if (csvData.length === 0) {
+      return res.status(400).json({ error: 'CSV is empty or invalid' });
+    }
+
+    const columns = Object.keys(csvData[0]);
+    const dataObj = {};
+    columns.forEach(col => {
+      dataObj[col] = csvData.map(row => row[col] || '');
     });
+
+    const totalPages = csvData.length;
+
+    // 2. Build layout based on study_type and columns
+    const layout = buildLayout(study_type, columns);
+
+    // 3. Create study folder and input.json
+    const studyFolder = path.join(__dirname, project_root, client_ui_web_pages_location, `study_id_${study_id}`);
+    await fs.ensureDir(studyFolder);
+    const imgFolder = path.join(studyFolder, 'img');
+    await fs.ensureDir(imgFolder);
+
+    const inputJson = {
+      study_id: study_id,
+      study_type: parseInt(study_type),
+      total_pages: totalPages,
+      layout: layout,
+      data: dataObj
+    };
+    await fs.writeFile(path.join(studyFolder, 'input.json'), JSON.stringify(inputJson, null, 2));
+
+    // 4. Extract ZIP and flatten – ignore folder structure
+    const zip = new AdmZip(zipBuffer);
+    const entries = zip.getEntries();
+    for (const entry of entries) {
+      if (!entry.isDirectory) {
+        const fileName = path.basename(entry.entryName);
+        const filePath = path.join(imgFolder, fileName);
+        const content = entry.getData();
+        fs.writeFileSync(filePath, content);
+      }
+    }
+
+    // 5. Insert into study table
+    const insertStmt = db.prepare("INSERT OR REPLACE INTO study (study_id, study_type, total_pages) VALUES (?, ?, ?)");
+    insertStmt.run(study_id, study_type, totalPages);
+    insertStmt.finalize();
+
+    res.json({ success: true, message: 'Study created successfully', study_id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper: parse CSV buffer
+function parseCSV(buffer) {
+  return new Promise((resolve, reject) => {
+    const results = [];
+    const parser = csv();
+    const stream = require('stream');
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(buffer);
+    bufferStream.pipe(parser)
+      .on('data', (data) => results.push(data))
+      .on('end', () => resolve(results))
+      .on('error', reject);
+  });
 }
 
-/*
-function cb_event_write_db(req, res)
-{
-    const { participant_id,study_id,xray_image,participant_diagnosis, page_nr} = req.body;
-    console.log(`Saving to database: participant_id=${participant_id}, study_id=${study_id}, xray_image=${xray_image}, participant_diagnosis=${participant_diagnosis}, page_nr=${page_nr}`);
+// Helper: build layout based on study_type and columns
+// Helper: build layout based on study_type and columns
+function buildLayout(study_type, columns) {
+  // Start with patient image
+  let row1 = [{ type: 'patient_image', id_field: 'PATIENT_ID', image_field: 'X_RAY_IMAGE' }];
+  let row1_columns = 1;
 
-    let p_diagnosis = (participant_diagnosis === "healthy") ? "Healthy" : "OCDegen";
+  // Helper to find a column (with or without _Salience suffix)
+  function findColumn(baseName) {
+    if (columns.includes(baseName)) return baseName;
+    if (columns.includes(baseName + '_Salience')) return baseName + '_Salience';
+    return null;
+  }
 
-    db.run(`INSERT INTO participant_feedback (participant_id, study_id, xray_image, participant_diagnosis, page_nr) VALUES (?, ?, ?, ?, ?)`, [participant_id, study_id, xray_image, p_diagnosis, page_nr], (err) => {
-        if (err) {
-            return res.status(500).send('Error saving data');
-        }
-        res.json({ message: "Data stored successfully!" });
+  // Helper to add counterfactual cards for a given base name (e.g., 'Example1' or 'Concept1')
+  function addCounterfactualCards(baseNames) {
+    baseNames.forEach((base, i) => {
+      const imgField = findColumn(base);
+      const captionField = base + '_Caption';
+      if (imgField && columns.includes(captionField)) {
+        row1.push({
+          type: 'counterfactual',
+          image_field: imgField,
+          caption_field: captionField,
+          title: `Counterfactual ${i+1}`
+        });
+      }
     });
-}
-*/
+  }
 
-/* 1. Checks if an entry exists with the same participant_id, study_id, and page_nr
- * 2. If an entry exists  -> Updates participant_diagnosis and xray_image
- * 3. If no entry         -> Inserts a new record into the database
- */
+  if (study_type == 2) {
+    // Try SHAP first
+    if (columns.includes('Shap') && columns.includes('Shap_Caption')) {
+      row1.push({
+        type: 'shap_image',
+        image_field: 'Shap',
+        caption_field: 'Shap_Caption',
+        title: 'Important Features',
+        colorbar: '/common/imgs/colorbar.png'
+      });
+      row1_columns = 2;
+    } else {
+      // Fallback to Concept1 or Example1
+      const imgField = findColumn('Concept1') || findColumn('Example1');
+      if (imgField && columns.includes('Concept1_Caption') || columns.includes('Example1_Caption')) {
+        const captionField = columns.includes('Concept1_Caption') ? 'Concept1_Caption' : 'Example1_Caption';
+        row1.push({
+          type: 'counterfactual',
+          image_field: imgField,
+          caption_field: captionField,
+          title: 'Counterfactual 1'
+        });
+        row1_columns = 2;
+      }
+    }
+  } else if (study_type == 3) {
+    // Try Example1, Example2 OR Concept1, Concept2
+    const baseNames = ['Example1', 'Example2'];
+    addCounterfactualCards(baseNames);
+    // If no Example columns found, try Concept1, Concept2
+    if (row1.length === 1) {
+      addCounterfactualCards(['Concept1', 'Concept2']);
+    }
+    row1_columns = row1.length;
+  } else if (study_type == 4) {
+    const baseNames = ['Example1', 'Example2', 'Example3'];
+    addCounterfactualCards(baseNames);
+    if (row1.length === 1) {
+      addCounterfactualCards(['Concept1', 'Concept2', 'Concept3']);
+    }
+    row1_columns = row1.length;
+  } else if (study_type == 5) {
+    const baseNames = ['Example1', 'Example2', 'Example3', 'Example4'];
+    addCounterfactualCards(baseNames);
+    if (row1.length === 1) {
+      addCounterfactualCards(['Concept1', 'Concept2', 'Concept3', 'Concept4']);
+    }
+    row1_columns = row1.length;
+  }
+
+  // Ensure we have at least 1 column
+  if (row1_columns < 1) row1_columns = 1;
+
+  const row2 = [
+    { type: 'symptoms_list', symptoms: ['Strong Spine Bend', 'Strong Bone Variation', 'Tucked Head', 'Main Bones Mutation'] },
+    { type: 'diagnosis_card', show_true: true, show_present: true, ai_field: 'SUGGESTED_DIAG', true_field: 'TRUE_DIAG', present_field: 'X_RAY_TRAIT' },
+    { type: 'warning_card' }
+  ];
+
+  return { row1_columns, row1, row2 };
+}
+// ============================================================
+// 4. Database Route Handlers
+// ============================================================
+
 function cb_event_write_db(req, res) {
     const { participant_id, study_id, xray_image, participant_diagnosis, page_nr } = req.body;
+    console.log('📩 Received body:', req.body);
+    console.log(`Writing DB: participant=${participant_id}, study=${study_id}, page=${page_nr}`);
 
-    console.log(`Checking database for existing entry: participant_id=${participant_id}, study_id=${study_id}, page_nr=${page_nr}`);
+    const p_diagnosis = (participant_diagnosis === "healthy") ? "Healthy" : "OCDegen";
 
-    let p_diagnosis = (participant_diagnosis === "healthy") ? "Healthy" : "OCDegen";
-
-    // First, check if an entry already exists
     db.get(
         `SELECT * FROM participant_feedback WHERE study_id = ? AND participant_id = ? AND page_nr = ?`,
         [study_id, participant_id, page_nr],
@@ -165,7 +359,6 @@ function cb_event_write_db(req, res) {
             }
 
             if (row) {
-                // If entry exists, update it
                 const oldDiagnosis = row.participant_diagnosis;
                 if (oldDiagnosis === p_diagnosis) {
                     console.log("Diagnosis unchanged, skipping update.");
@@ -176,14 +369,12 @@ function cb_event_write_db(req, res) {
                     `UPDATE participant_feedback
                      SET participant_diagnosis = ?, xray_image = ?
                      WHERE study_id = ? AND participant_id = ? AND page_nr = ?`,
-                    [p_diagnosis, xray_image, study_id, participant_id, page_nr],
+                    [p_diagnosis, xray_image || '', study_id, participant_id, page_nr],
                     (updateErr) => {
                         if (updateErr) {
                             console.error(updateErr.message);
                             return res.status(500).send('Error updating data');
                         }
-
-                        // update access_times, then send ONE response
                         db.run(
                             `UPDATE access_times
                              SET last_update_ms = CAST(strftime('%s','now') AS INTEGER)*1000
@@ -200,18 +391,15 @@ function cb_event_write_db(req, res) {
                     }
                 );
             } else {
-                // If no existing entry, insert a new one
                 db.run(
                     `INSERT INTO participant_feedback (participant_id, study_id, xray_image, participant_diagnosis, page_nr)
                      VALUES (?, ?, ?, ?, ?)`,
-                    [participant_id, study_id, xray_image, p_diagnosis, page_nr],
+                    [participant_id, study_id, xray_image || '', p_diagnosis, page_nr],
                     (insertErr) => {
                         if (insertErr) {
                             console.error(insertErr.message);
                             return res.status(500).send('Error saving data');
                         }
-
-                        // update access_times, then send ONE response
                         db.run(
                             `UPDATE access_times
                              SET last_update_ms = CAST(strftime('%s','now') AS INTEGER)*1000
@@ -234,10 +422,8 @@ function cb_event_write_db(req, res) {
 
 function cb_event_log_visit(req, res) {
     const { participant_id, study_id, page_nr } = req.body;
+    console.log(`Logging visit: participant=${participant_id}, study=${study_id}, page=${page_nr}`);
 
-    console.log(`Logging page visit: participant_id=${participant_id}, study_id=${study_id}, page_nr=${page_nr}`);
-
-    // Basic validation + single response path
     if (!participant_id || !study_id || page_nr == null) {
         return res.status(400).json({ error: 'missing fields' });
     }
@@ -255,9 +441,7 @@ function cb_event_log_visit(req, res) {
             return res.json({ success: true, id: this.lastID });
         }
     );
-};
-
-
+}
 
 function cb_event_read_db(req, res) {
     db.all("SELECT * FROM participant_feedback", [], (err, rows) => {
@@ -272,53 +456,44 @@ function cb_event_read_db(req, res) {
 
 function cb_event_read_db_prev(req, res) {
     const { participant_id, study_id, page_nr } = req.query;
+    console.log(`Reading DB: participant=${participant_id}, study=${study_id}, page=${page_nr}`);
 
-    console.log(`Checking database for existing entry: participant_id=${participant_id}, study_id=${study_id}, page_nr=${page_nr}`);
     const query = `SELECT * FROM participant_feedback WHERE participant_id = ? AND study_id = ? AND page_nr = ?`;
-
-    const params = [participant_id, study_id, page_nr];
-
-    db.all(query, params, (err, rows) => {
+    db.all(query, [participant_id, study_id, page_nr], (err, rows) => {
         if (err) {
             console.error("Database Error:", err);
             res.status(500).json({ error: "Error reading data" });
             return;
         }
-        console.error(rows);
         res.json(rows);
     });
 }
 
 function get_last_updated_page_nr(participant_id, study_id) {
-    console.log(`Fetching last updated page_nr for: participant_id=${participant_id}, study_id=${study_id}`);
-
+    console.log(`Fetching last updated page_nr for: participant=${participant_id}, study=${study_id}`);
     const query = `SELECT MAX(page_nr) AS last_updated_page_nr FROM participant_feedback WHERE participant_id = ? AND study_id = ?`;
-
     return new Promise((resolve, reject) => {
         db.get(query, [participant_id, study_id], (err, row) => {
             if (err) {
-                console.error("Database error: Fetching Last Updated Page Number", err);
-                return reject(-1); // Handle DB error
+                console.error("Database error:", err);
+                return reject(-1);
             }
-            resolve(row?.last_updated_page_nr ?? 1); // Default to 1 if no record found
+            resolve(row?.last_updated_page_nr ?? 1);
         });
     });
 }
 
 function get_study_details(study_id) {
     console.log(`Fetching study details for: study_id=${study_id}`);
-
     const query = `SELECT study_id, study_type, total_pages FROM study WHERE study_id = ?`;
-
     return new Promise((resolve, reject) => {
         db.get(query, [study_id], (err, row) => {
             if (err) {
                 console.error("Database error:", err);
-                return reject({ study_type: -1, total_pages: -1 }); // Handle DB error
+                return reject({ study_type: -1, total_pages: -1 });
             }
             if (!row) {
-                console.error(`Study table not created or record not available: ${row}`);
-                return reject({ study_type: -2, total_pages: -2 }); // Handle missing record
+                return reject({ study_type: -2, total_pages: -2 });
             }
             resolve({ study_type: parseInt(row.study_type), total_pages: parseInt(row.total_pages) });
         });
@@ -326,12 +501,11 @@ function get_study_details(study_id) {
 }
 
 async function cb_event_db_validation_participant_id_and_study_id(req, res) {
-    const { participant_id, study_id } = req.body; // Get both participant_id and study_id from the request body
-    console.log(`[ CLIENT REQUEST ] Submit Participant ID: ${encodeURIComponent(participant_id)}`);
-    console.log(`[ CLIENT REQUEST ] Submit Study ID: ${encodeURIComponent(study_id)}`);
+    const { participant_id, study_id } = req.body;
+    console.log(`[CLIENT REQUEST] Validate: participant=${participant_id}, study=${study_id}`);
 
     try {
-        const { study_type, total_pages } = await get_study_details(parseInt(study_id));
+        const { study_type, total_pages } = await get_study_details(study_id);
         console.log(`Study Details: study_type=${study_type}, total_pages=${total_pages}`);
 
         if (study_type === -1) {
@@ -340,10 +514,8 @@ async function cb_event_db_validation_participant_id_and_study_id(req, res) {
             return res.status(404).json({ error: "Record with study_id does not exist in the study table" });
         }
 
-        const last_updated_page_nr = await get_last_updated_page_nr(participant_id, study_id);
-
+        let last_updated_page_nr = await get_last_updated_page_nr(participant_id, study_id);
         if (last_updated_page_nr === -1) {
-            console.log("DB Error fetching last updated page number");
             last_updated_page_nr = 1;
         }
 
@@ -354,52 +526,26 @@ async function cb_event_db_validation_participant_id_and_study_id(req, res) {
     }
 }
 
-
-/*
-function cb_event_get_last_updated_page_nr(req, res) {
-    const { participant_id, study_id } = req.query;
-
-    console.log(`Fetching last updated page_nr for: participant_id=${participant_id}, study_id=${study_id}`);
-
-    const query = `SELECT MAX(page_nr) AS last_updated_page_nr FROM participant_feedback WHERE participant_id = ? AND study_id = ?`;
-
-    db.get(query, [participant_id, study_id], (err, row) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Error retrieving last updated page number" });
-        }
-        res.json({ last_updated_page_nr: row?.last_updated_page_nr ?? 1 }); // Return last updated page or 1 if no records [ the study page starts with page 1]
-    });
-}
-*/
-/*
-function cb_event_get_study_details(req, res) {
-    const { study_id } = req.query;
-
-    console.log(`Fetching study details for: study_id=${study_id}`);
-
-    const query = `SELECT study_id, study_type, total_pages FROM study WHERE study_id = ?`;
-
-    db.get(query, [study_id], (err, row) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Database error retrieving study details" });
-        }
-        if (!row) {
-            return res.status(404).json({ error: "Study table not created or record not available" });
-        }
-        res.json(row);
-    });
-}
-*/
+// ============================================================
+// 5. Register Routes (with middleware correctly applied)
+// ============================================================
 
 init();
-register_post_event("/db_validation_participant_id_and_study_id", cb_event_db_validation_participant_id_and_study_id);
-register_post_event("/write_db", cb_event_write_db);
-register_post_event("/log_visit", cb_event_log_visit);
-register_get_event("/read_db", cb_event_read_db);
-register_get_event("/read_db_prev", cb_event_read_db_prev);
-//register_get_event("/read_db_get_last_updated_page_nr", cb_event_get_last_updated_page_nr);
-//register_get_event("/read_db_get_study_details", cb_event_get_study_details);
 
-start_http_server(PORT);
+// Apply validation middleware only to /write_db
+app.post('/write_db', validateFeedback, cb_event_write_db);
+
+// Other routes
+app.post('/db_validation_participant_id_and_study_id', cb_event_db_validation_participant_id_and_study_id);
+app.post('/log_visit', cb_event_log_visit);
+app.get('/read_db', cb_event_read_db);
+app.get('/read_db_prev', cb_event_read_db_prev);
+
+if (require.main === module) {
+    start_http_server(PORT);
+}
+
+module.exports = app;
+
+
+  

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Start Study</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/common/index.css">
+</head>
+<body>
+  <div class="fixed-page-dimension">
+    <!-- Same Unified Header -->
+    <header>
+      <div class="header-left">
+        <a href="/" class="home-btn">← Home</a>
+        <h1 class="app-title" style="text-align: left;">Blockies OCDegen Diagnosis Support</h1>
+      </div>
+    </header>
+
+    <main style="align-items: center; justify-content: center;">
+      <div class="glass-card">
+        <h2 style="font-size: 2.2rem; color: var(--text-dark); margin-bottom: 0.5rem;">Start Study</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Enter your participant ID and the study ID.</p>
+        
+        <div class="form-group">
+          <label for="participantId">Participant ID (24 chars)</label>
+          <input type="text" id="participantId" placeholder="e.g. 123456789012345678901234" maxlength="24" pattern="[A-Za-z0-9]{24}">
+        </div>
+        <div class="form-group">
+          <label for="studyId">Study ID</label>
+          <input type="text" id="studyId" placeholder="e.g. 411 or test01">
+        </div>
+        <button class="global-btn btn-dark" id="startBtn">Start Study</button>
+        <div class="error" id="errorMsg">Please fill in both fields correctly.</div>
+      </div>
+    </main>
+
+    <footer>
+      <div style="color: var(--text-muted); font-size: 0.95rem;">The study will open in a new tab.</div>
+    </footer>
+  </div>
+
+  <script>
+    (function() {
+      const pidInput = document.getElementById('participantId');
+      const sidInput = document.getElementById('studyId');
+      const startBtn = document.getElementById('startBtn');
+      const errorMsg = document.getElementById('errorMsg');
+
+      function validate() {
+        const pid = pidInput.value.trim();
+        const sid = sidInput.value.trim();
+        if (pid.length !== 24 || !/^[A-Za-z0-9]+$/.test(pid) || sid === '') {
+          errorMsg.style.display = 'block';
+          startBtn.disabled = true;
+          return false;
+        }
+        errorMsg.style.display = 'none';
+        startBtn.disabled = false;
+        return true;
+      }
+
+      pidInput.addEventListener('input', validate);
+      sidInput.addEventListener('input', validate);
+
+      startBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        if (!validate()) return;
+        const pid = pidInput.value.trim();
+        const sid = sidInput.value.trim();
+
+        try {
+          const response = await fetch(`/study_id_${sid}/input.json`);
+          if (!response.ok) throw new Error('Study not found');
+          const data = await response.json();
+          const totalPages = data.total_pages || data.data?.PATIENT_ID?.length || 1;
+          const url = `/study_id_${sid}/index.html?participant_id=${pid}&study_id=${sid}&page_nr=1&total_pages=${totalPages}`;
+          window.open(url, '_blank');
+        } catch (err) {
+          errorMsg.textContent = 'Study not found. Please check the Study ID.';
+          errorMsg.style.display = 'block';
+          startBtn.disabled = true;
+        }
+      });
+      // Keyboard Shortcut: Press Enter to start
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && !startBtn.disabled) {
+          event.preventDefault();
+          startBtn.click();
+        }
+      });
+      validate();
+    })();
+  </script>
+</body>
+</html>

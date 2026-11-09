@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Study</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/common/index.css">
+</head>
+<body>
+  <div class="fixed-page-dimension">
+    <!-- Same Unified Header -->
+    <header>
+      <div class="header-left">
+        <a href="/" class="home-btn">← Home</a>
+        <h1 class="app-title" style="text-align: left;">Blockies OCDegen Diagnosis Support</h1>
+      </div>
+    </header>
+
+    <main style="align-items: center; justify-content: center;">
+      <div class="glass-card">
+        <h2 style="font-size: 2.2rem; color: var(--text-dark); margin-bottom: 0.5rem;">Create New Study</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Upload a CSV and a ZIP of images.</p>
+
+        <form id="createStudyForm" enctype="multipart/form-data">
+          <div class="form-group">
+            <label>Study ID (e.g., 123)</label>
+            <input type="text" name="study_id" required>
+          </div>
+          <div class="form-group">
+            <label>Study Type (1-5)</label>
+            <input type="number" name="study_type" min="1" max="5" required>
+          </div>
+          <div class="form-group">
+            <label>CSV File</label>
+            <input type="file" name="csv" accept=".csv" required style="padding: 0.5rem; background: white;">
+          </div>
+          <div class="form-group">
+            <label>ZIP File (images)</label>
+            <input type="file" name="zip" accept=".zip" required style="padding: 0.5rem; background: white;">
+          </div>
+          <button type="submit" class="global-btn" style="background: var(--bg-green); border:none; width: 100%; color: white; margin-top: 10px;">Create Study</button>
+        </form>
+        <div id="createStatus" style="margin-top: 1.2rem; font-weight: 600; font-size: 1.1rem; text-align: center;"></div>
+      </div>
+    </main>
+
+    <footer>
+      <div style="color: var(--text-muted); font-size: 0.95rem;">The study will be available immediately after creation.</div>
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById('createStudyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const status = document.getElementById('createStatus');
+      status.textContent = 'Creating study...';
+      status.style.color = '#f39c12';
+      try {
+        const res = await fetch('/create-study', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          status.textContent = '✅ Study created successfully! You can now start it.';
+          status.style.color = 'var(--green)';
+          form.reset();
+        } else {
+          status.textContent = '❌ Error: ' + (data.error || 'Unknown error');
+          status.style.color = 'var(--orange)';
+        }
+      } catch (err) {
+        status.textContent = '❌ Network error: ' + err.message;
+        status.style.color = 'var(--orange)';
+      }
+    });
+  </script>
+</body>
+</html>

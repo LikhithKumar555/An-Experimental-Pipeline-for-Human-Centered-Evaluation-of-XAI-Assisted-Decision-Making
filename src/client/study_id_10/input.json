@@ -1,39 +1,52 @@
 {
+  "study_id": 10,
+  "study_type": 3,
+  "total_pages": 16,
+  "layout": {
+    "row1_columns": 3,
+    "row1": [
+      { "type": "patient_image", "id_field": "PATIENT_ID", "image_field": "X_RAY_IMAGE" },
+      { 
+        "type": "counterfactual",
+        "image_field": "Example1",
+        "caption_field": "Example1_Caption",
+        "title": "Counterfactual 1"
+      },
+      {
+        "type": "counterfactual",
+        "image_field": "Example2",
+        "caption_field": "Example2_Caption",
+        "title": "Counterfactual 2"
+      }
+    ],
+    "row2": [
+      {
+        "type": "symptoms_list",
+        "symptoms": ["Strong Spine Bend", "Strong Bone Variation", "Tucked Head", "Main Bones Mutation"]
+      },
+      {
+        "type": "diagnosis_card",
+        "show_true": true,
+        "show_present": true,
+        "ai_field": "SUGGESTED_DIAG",
+        "true_field": "TRUE_DIAG",
+        "present_field": "X_RAY_TRAIT"
+      },
+      {
+        "type": "warning_card"
+      }
+    ]
+  },
+  "data": {
     "INDEX": [
-        "106",
-        "34",
-        "104",
-        "60",
-        "14",
-        "54",
-        "17",
-        "25",
-        "9",
-        "110",
-        "7",
-        "96",
-        "3",
-        "4",
-        "109",
-        "90"
+        "106", "34", "104", "60", "14", "54", "17", "25",
+        "9", "110", "7", "96", "3", "4", "109", "90"
     ],
     "PATIENT_ID": [
-        "UFUZEPF2",
-        "F75DW3E5",
-        "VAKY1VGZ",
-        "P1EL4KVB",
-        "V9P4U7RP",
-        "1KBVB8QR",
-        "DEWGHGDE",
-        "V47FVALE",
-        "KF1GOLJO",
-        "I4GVT3FF",
-        "DY72Z3GT",
-        "D7KQZON9",
-        "ZN2HJG4I",
-        "GXBKPBJE",
-        "Z3Z1TB68",
-        "C29STSLZ"
+        "UFUZEPF2", "F75DW3E5", "VAKY1VGZ", "P1EL4KVB",
+        "V9P4U7RP", "1KBVB8QR", "DEWGHGDE", "V47FVALE",
+        "KF1GOLJO", "I4GVT3FF", "DY72Z3GT", "D7KQZON9",
+        "ZN2HJG4I", "GXBKPBJE", "Z3Z1TB68", "C29STSLZ"
     ],
     "X_RAY_IMAGE": [
         "f57968bf-b5df-4617-90f4-9e678be257b4.png",
@@ -52,6 +65,48 @@
         "8b176c7d-fffa-43bb-b938-e0747393110b.png",
         "ee0a044a-6a95-4fdd-8ce5-97259c0b5d9d.png",
         "230f2537-fd70-43ff-963e-598f477dd1e3.png"
+    ],
+    "Example1": [
+        "f57968bf-b5df-4617-90f4-9e678be257b4_cf_0.png",
+        "129c6012-4cc1-423e-b6b7-b24fa97ddb07_cf_0.png",
+        "f3a969b6-a6df-4739-a406-be8bb2fa6d13_cf_0.png",
+        "4b31094a-0319-4b9a-aa56-76808a2ac93a_cf_0.png",
+        "5877df96-5ac7-42d4-add6-e730655680b7_cf_0.png",
+        "7a6c4a43-74df-4d3a-b008-194d2a0d3a01_cf_0.png",
+        "9e733c22-b3cd-48f0-889a-26028e184cd5_cf_0.png",
+        "5e47618b-155a-4fa4-ba1b-ebb1b5e3368c_cf_0.png",
+        "7b4f2fc7-7fa9-4518-adba-aa3e2399a8f7_cf_0.png",
+        "fc44e8f1-c3df-4259-b690-3977edba9903_cf_0.png",
+        "40f71f1a-c934-43ac-94b3-6691582c8594_cf_0.png",
+        "45a3b2d0-30ac-4bcd-9e90-91db8b3c3184_cf_0.png",
+        "b0e4e499-774b-400f-8cf9-d34343171b21_cf_0.png",
+        "8b176c7d-fffa-43bb-b938-e0747393110b_cf_0.png",
+        "ee0a044a-6a95-4fdd-8ce5-97259c0b5d9d_cf_0.png",
+        "230f2537-fd70-43ff-963e-598f477dd1e3_cf_0.png"
+    ],
+    "Example1_Caption": [
+        "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""
+    ],
+    "Example2": [
+        "f57968bf-b5df-4617-90f4-9e678be257b4_cf_1.png",
+        "129c6012-4cc1-423e-b6b7-b24fa97ddb07_cf_1.png",
+        "f3a969b6-a6df-4739-a406-be8bb2fa6d13_cf_1.png",
+        "4b31094a-0319-4b9a-aa56-76808a2ac93a_cf_1.png",
+        "5877df96-5ac7-42d4-add6-e730655680b7_cf_1.png",
+        "7a6c4a43-74df-4d3a-b008-194d2a0d3a01_cf_1.png",
+        "9e733c22-b3cd-48f0-889a-26028e184cd5_cf_1.png",
+        "5e47618b-155a-4fa4-ba1b-ebb1b5e3368c_cf_1.png",
+        "7b4f2fc7-7fa9-4518-adba-aa3e2399a8f7_cf_1.png",
+        "fc44e8f1-c3df-4259-b690-3977edba9903_cf_1.png",
+        "40f71f1a-c934-43ac-94b3-6691582c8594_cf_1.png",
+        "45a3b2d0-30ac-4bcd-9e90-91db8b3c3184_cf_1.png",
+        "b0e4e499-774b-400f-8cf9-d34343171b21_cf_1.png",
+        "8b176c7d-fffa-43bb-b938-e0747393110b_cf_1.png",
+        "ee0a044a-6a95-4fdd-8ce5-97259c0b5d9d_cf_1.png",
+        "230f2537-fd70-43ff-963e-598f477dd1e3_cf_1.png"
+    ],
+    "Example2_Caption": [
+        "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""
     ],
     "X_RAY_TRAIT": [
         "Main Bones Mutation, Tucked Head",
@@ -72,75 +127,24 @@
         "Strong Bone Variation"
     ],
     "TRUE_DIAG": [
-        "OCDegen",
-        "Healthy",
-        "Healthy",
-        "OCDegen",
-        "OCDegen",
-        "OCDegen",
-        "OCDegen",
-        "OCDegen",
-        "OCDegen",
-        "Healthy",
-        "Healthy",
-        "Healthy",
-        "Healthy",
-        "OCDegen",
-        "Healthy",
-        "Healthy"
+        "OCDegen", "Healthy", "Healthy", "OCDegen",
+        "OCDegen", "OCDegen", "OCDegen", "OCDegen",
+        "OCDegen", "Healthy", "Healthy", "Healthy",
+        "Healthy", "OCDegen", "Healthy", "Healthy"
     ],
     "SUGGESTED_DIAG": [
-        "OCDegen",
-        "Healthy",
-        "Healthy",
-        "OCDegen",
-        "Healthy",
-        "Healthy",
-        "Healthy",
-        "OCDegen",
-        "OCDegen",
-        "Healthy",
-        "Healthy",
-        "Healthy",
-        "OCDegen",
-        "OCDegen",
-        "OCDegen",
-        "OCDegen"
+        "OCDegen", "Healthy", "Healthy", "OCDegen",
+        "Healthy", "Healthy", "Healthy", "OCDegen",
+        "OCDegen", "Healthy", "Healthy", "Healthy",
+        "OCDegen", "OCDegen", "OCDegen", "OCDegen"
     ],
     "X_RAY_LOCATION": [
-        "SF",
-        "CHI",
-        "SF",
-        "PHX",
-        "CHI",
-        "PHX",
-        "SF",
-        "CHI",
-        "ATL",
-        "SEA",
-        "MIA",
-        "SF",
-        "MIA",
-        "DEN",
-        "CHI",
-        "DEN"
+        "SF", "CHI", "SF", "PHX", "CHI", "PHX", "SF", "CHI",
+        "ATL", "SEA", "MIA", "SF", "MIA", "DEN", "CHI", "DEN"
     ],
     "PHASE": [
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1",
-        "1"
+        "1", "1", "1", "1", "1", "1", "1", "1",
+        "1", "1", "1", "1", "1", "1", "1", "1"
     ]
+  }
 }

@@ -160,3 +160,85 @@ function showError(msg) {
 
     target.prepend(box);
 }
+
+// Progress bar
+function set_progress(current_page_nr, total_page_count) {
+    let progress_value = (current_page_nr / total_page_count) * 100;
+    let progress_bar = document.querySelector(".progress-bar");
+    if (progress_bar) {
+        progress_bar.style.width = progress_value + "%";
+    }
+    const text = document.getElementById("progress-bar-text");
+    if (text) {
+        text.textContent = "Diagnosis " + current_page_nr + "/" + total_page_count;
+    }
+}
+
+// Radio buttons
+function get_radio_button_status() {
+    const radios = document.getElementsByName("health");
+    for (const radio of radios) {
+        if (radio.checked) return radio.value;
+    }
+    return null;
+}
+
+function clear_radio_buttons() {
+    const radios = document.getElementsByName("health");
+    for (const radio of radios) {
+        radio.checked = false;
+    }
+}
+
+function set_participant_diagnosis(val) {
+    if (typeof val === "string") val = val.toLowerCase();
+    if (val === "healthy") {
+        document.getElementById("radio-healthy").checked = true;
+    } else if (val === "ocdegen") {
+        document.getElementById("radio-unhealthy").checked = true;
+    } else {
+        console.error("Invalid diagnosis value:", val);
+        return false;
+    }
+    return true;
+}
+
+// Navigation
+function button_toggle_next_or_submit() {
+    const up = get_params_from_url();
+    let total_pages = parseInt(up.total_pages, 10);
+    let curr_page = parseInt(up.page_nr, 10);
+    if (isNaN(curr_page) || curr_page < 1) curr_page = 1;
+    if (isNaN(total_pages) || total_pages < 1) total_pages = 1;
+
+    const button_next = document.getElementById("button-next");
+    const button_prev = document.getElementById("button-prev");
+    const button_submit = document.getElementById("button-submit");
+
+    button_prev.style.display = 'none';
+    button_prev.disabled = true;
+    button_next.style.display = 'inline-block';
+    button_next.disabled = get_radio_button_status() === null;
+    button_submit.disabled = true;
+
+    if (curr_page === 1) {
+        button_prev.disabled = true;
+        return;
+    }
+    if (curr_page === total_pages) {
+        button_next.disabled = true;
+        return;
+    }
+}
+
+// Database functions (simplified – your original should have these)
+async function db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr) {
+    // Placeholder – should fetch from server and call set_participant_diagnosis
+    // For now, do nothing or log
+    console.log("db_get_and_set_participant_diagnosis called");
+}
+
+// Placeholder for log_page_visit if missing
+async function log_page_visit(participant_id, study_id, page_nr) {
+    console.log("log_page_visit called");
+}
