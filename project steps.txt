@@ -1,0 +1,28 @@
+ cd xai-eval-app
+
+ ./docker.stop.sh
+
+
+
+ ./docker.build.sh
+
+./docker.start.sh
+
+
+
+REMOVE THE FOLDER
+
+ sudo rm -rf ~/blockies-project/xai-eval-app/src/client/study_id_713
+
+
+test
+
+cd xai-eval-app/src/server
+
+DB_PATH=../../database/database.db npx mocha test/api.test.js
+
+exit from environment
+
+
+deactivate
+
