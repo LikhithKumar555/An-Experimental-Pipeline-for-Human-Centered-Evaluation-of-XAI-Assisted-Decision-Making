@@ -152,3 +152,12 @@ Images and the database are not stored in Git. Before starting the app:
 1. Download `webapp_data.zip`: https://drive.google.com/file/d/1CHBh-8lmABCUpUm4E_saZhaQT4TqZ_y5/view?usp=sharing
 2. Put it in the project root and run: `unzip webapp_data.zip`
 3. Rebuild the image, then run `bash docker.start.sh`
+
+## Setup (study images and database)
+
+Study folders, images and the database are not stored in Git. Before starting the app:
+
+1. Download `webapp_data.zip`: https://drive.google.com/file/d/1NmGFRe6ONUgXF4d-CHavPbrjyHNhGsiB/view?usp=drive_link
+2. Put it in the project root and run: `unzip -o webapp_data.zip`
+3. Rebuild the image, then run `bash docker.start.sh`
+4. Open e.g. `http://localhost:7000/study_id_411/index.html?participant_id=123&study_id=411&page_nr=1&total_pages=16`
